@@ -1,15 +1,17 @@
-package server
+package client
 
 import (
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"go_test/model"
+	"io/ioutil"
 	"time"
 
 	"github.com/valyala/fasthttp"
 )
 
-func RequestHttp(httpClientSettings model.HttpClientSettings) {
+func RequestHttp(httpRequest model.HttpRequest) {
 
 	// 使用fasthttp 协程池
 
@@ -21,7 +23,7 @@ func RequestHttp(httpClientSettings model.HttpClientSettings) {
 	defer fasthttp.ReleaseResponse(resp)
 
 	// 新建一个http的客户端
-	client := newHttpClient(httpClientSettings)
+	client := newHttpClient(httpRequest.HttpClientSettings)
 
 	// 添加该请求的http方法：get、post、delete、update等等
 	req.Header.SetMethod("GET")
@@ -80,5 +82,48 @@ func newHttpClient(httpClientSettings model.HttpClientSettings) (httpClient *fas
 	if httpClientSettings.MaxIdleConnDuration != 0 {
 		httpClient.MaxIdleConnDuration = time.Duration(httpClientSettings.MaxIdleConnDuration) * time.Millisecond
 	}
+	//
+	httpsTls := httpClientSettings.AdvancedOptions.Tls
+
+	// 如果开启认证
+	if httpsTls.IsVerify {
+		// switch条件选择语句，如果认证类型为0：则表示双向认证，如果是1：则表示为单向认证
+		switch httpsTls.VerifyType {
+		case 0: // 开启双向验证
+			tr.InsecureSkipVerify = false
+			// 如果密钥文件为空则跳出switch语句
+			if httpsTls.CaCert == "" {
+				break
+			}
+			// 生成一个cert对象池
+			caCertPool := x509.NewCertPool()
+			if caCertPool == nil {
+				fmt.Println("生成CertPool失败！")
+				break
+			}
+
+			// 读取认证文件，读出后为字节数组
+			key, err := ioutil.ReadFile(httpsTls.CaCert)
+			// 如果读取错误，则跳出switch语句
+			if err != nil {
+				fmt.Println("打开密钥文件失败：", err.Error())
+				break
+			}
+			// 将认证文件添加到cert池中
+			ok := caCertPool.AppendCertsFromPEM(key)
+			// 如果添加失败则跳出switch语句
+			if !ok {
+				fmt.Println("密钥文件错误，生成失败！！！")
+				break
+			}
+			// 将认证信息添加到客户端认证结构体
+			tr.ClientCAs = caCertPool
+		case 1: // 开启单向验证，客户端验证服务端密钥
+			tr.InsecureSkipVerify = false
+		}
+	}
+
+	// 客户端认证配置项
+	httpClient.TLSConfig = tr
 	return
 }

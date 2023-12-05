@@ -4,6 +4,18 @@ import (
 	"crypto/tls"
 )
 
+// AdvancedOptions 高级选项
+type AdvancedOptions struct {
+	Tls Tls // 验证设置
+}
+
+// Tls tls认证结构体
+type Tls struct {
+	IsVerify   bool   // 是否开启验证，默认不开启，开启后需要上传密钥文件
+	VerifyType int32  // 认证类型：0表示双向认证；1表示单向认证；默认为0
+	CaCert     string // 密钥文件
+}
+
 // HttpRequest http请求的结构
 type HttpRequest struct {
 	Name               string             // 接口名称
@@ -59,4 +71,5 @@ type HttpClientSettings struct {
 	DisableHeaderNamesNormalizing bool
 	// url路径是按照原样输出，还是按照规范化输出。默认按照规范化输出
 	DisablePathNormalizing bool
+	AdvancedOptions        AdvancedOptions // 高级选项
 }
