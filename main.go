@@ -14,6 +14,6 @@ func main() {
 		NoDefaultUserAgentHeader: true,
 		MaxConnDuration:          1000,
 	}
-	// 调用
+	// 调用request
 	server.RequestHttp(httpClientSettings)
 }
